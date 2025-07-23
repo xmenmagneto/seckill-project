@@ -1,13 +1,13 @@
-package com.seckill.seckill_demo;
+package com.seckill;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SeckillDemoApplication {
+public class SeckillApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SeckillDemoApplication.class, args);
+		SpringApplication.run(SeckillApplication.class, args);
 	}
 
 }
