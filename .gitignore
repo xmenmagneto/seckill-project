@@ -1,0 +1,41 @@
+# Maven target
+target/
+
+# Maven wrapper jar (keep or remove this line depending on preference)
+!.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
+
+# IDEs
+# STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
