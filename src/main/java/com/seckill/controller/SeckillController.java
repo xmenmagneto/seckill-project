@@ -2,6 +2,7 @@ package com.seckill.controller;
 
 import com.seckill.kafka.KafkaSender;
 import com.seckill.model.OrderMessage;
+import com.seckill.service.RedisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -20,36 +21,29 @@ public class SeckillController {
     @Autowired
     private KafkaSender kafkaSender;
 
+    @Autowired
+    private RedisService redisService;
+
     @PostMapping("/buy")
     public String buy(@RequestParam Long userId, @RequestParam Long productId) {
         log.info("接收到秒杀请求：userId={}, productId={}", userId, productId);
 
-        // 1. 判断是否重复抢购
-        String key = "seckill:user:" + userId + ":product:" + productId;
-        Boolean hasOrdered;
-        try {
-            hasOrdered = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofMinutes(10));
-            if (Boolean.FALSE.equals(hasOrdered)) {
-                log.warn("重复下单：userId={}, productId={}", userId, productId);
-                return "You have already placed an order for this product";
-            }
-        } catch (Exception e) {
-            log.error("Redis操作失败，userId={}, productId={}, 错误信息：{}", userId, productId, e.getMessage(), e);
-            // 这里可以决定是否允许继续下单请求，或者直接返回失败提示
-            return "系统异常，请稍后重试";
-        }
+        // 1. 执行 Redis Lua 脚本（原子操作）
+        Long result = redisService.trySeckill(productId, userId);
+        log.info("Redis trySeckill 返回结果：{}", result);
 
-        try {
-            // 2. 发送下单消息到 Kafka
-            OrderMessage message = new OrderMessage(userId, productId);
-            kafkaSender.sendOrderMessage("seckill-order", message.toJson());
-            log.info("秒杀请求已投递 Kafka：userId={}, productId={}", userId, productId);
-            return "Purchase request submitted";
-        } catch (Exception e) {
-            log.error("Kafka发送消息失败，userId={}, productId={}, 错误信息：{}", userId, productId, e.getMessage(), e);
-            // 这里可以做一些补偿逻辑，比如删除redis的防重复key，让用户可以重试，或者返回友好提示
-            redisTemplate.delete(key);
-            return "系统繁忙，请稍后重试";
+        switch (result.intValue()) {
+            case -1 -> throw new RuntimeException("商品库存未初始化");
+            case 0 -> throw new RuntimeException("商品已售罄");
+            case 2 -> throw new RuntimeException("重复下单，您已抢购过该商品");
+            case 1 -> {
+                // 2. 投递 Kafka 异步下单
+                OrderMessage message = new OrderMessage(userId, productId);
+                kafkaSender.sendOrderMessage("seckill-order", message.toJson());
+                log.info("秒杀请求投递 Kafka 成功：{}", message);
+                return "秒杀请求已提交，请稍后查看结果";
+            }
+            default -> throw new RuntimeException("未知错误，请稍后重试");
         }
     }
 

@@ -37,24 +37,18 @@ public class OrderService {
                     return new RuntimeException("商品不存在");
                 });
 
+        // 2. 扣数据库库存（最终一致性）
         if (product.getStock() <= 0) {
             log.warn("库存不足，productId={}, 当前库存={}", productId, product.getStock());
             throw new RuntimeException("库存不足");
         }
 
-        // 2. 判断是否已抢购（幂等控制）
-        if (orderRepository.existsByUserIdAndProductId(userId, productId)) {
-            log.warn("重复抢购，userId={}, productId={}", userId, productId);
-            throw new RuntimeException("您已抢购过该商品");
-        }
-
-        // 3. 扣减库存
         int originalStock = product.getStock();
         product.setStock(product.getStock() - 1);
         productRepository.save(product);
         log.info("扣减库存成功，productId={}, 原库存={}, 新库存={}", productId, originalStock, product.getStock());
 
-        // 4. 新建订单
+        // 3. 创建订单
         SeckillOrder order = new SeckillOrder();
         order.setUserId(userId);
         order.setProductId(productId);
@@ -64,7 +58,7 @@ public class OrderService {
         log.info("创建订单成功，userId={}, productId={}, orderId={}", userId, productId, order.getId());
 
 
-        // 5. 写入秒杀结果（前端轮询）
+        // 4. 写入秒杀结果（前端轮询）
         redisTemplate.opsForValue().set("seckill:result:" + userId + ":" + productId, "SUCCESS");
         log.info("写入秒杀结果成功，key={}，value=SUCCESS", "seckill:result:" + userId + ":" + productId);
     }
