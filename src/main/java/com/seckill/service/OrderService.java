@@ -8,9 +8,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class OrderService {
 
@@ -22,8 +22,6 @@ public class OrderService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
-
-    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     /**
      * 创建订单（包含库存扣减和订单写库）

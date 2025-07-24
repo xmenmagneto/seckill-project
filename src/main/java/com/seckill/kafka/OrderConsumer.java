@@ -20,10 +20,14 @@ public class OrderConsumer {
     public void consume(String message) {
         log.info("收到 Kafka 消息：{}", message);
 
-        // 反序列化 JSON -> OrderMessage
-        OrderMessage orderMessage = OrderMessage.fromJson(message);
-
-        // 调用 OrderService 创建订单
-        orderService.createOrder(orderMessage.getUserId(), orderMessage.getProductId());
+        try {
+            OrderMessage orderMessage = OrderMessage.fromJson(message);
+            orderService.createOrder(orderMessage.getUserId(), orderMessage.getProductId());
+        } catch (Exception e) {
+            log.error("处理秒杀订单失败，消息内容：{}，异常信息：{}", message, e.getMessage(), e);
+            // 根据业务，选择：
+            // 1. 忽略异常，继续消费下一条（当前catch即为忽略异常）
+            // 2. 手动重试或将消息转发到死信队列
+        }
     }
 }

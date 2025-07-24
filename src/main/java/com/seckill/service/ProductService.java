@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class ProductService {
     @Autowired
@@ -22,8 +24,15 @@ public class ProductService {
 
     // 启动预热
     public void preloadStockToRedis() {
+        log.info("开始预热库存到 Redis...");
         for (Product product : getProductList()) {
-            redisService.setStock(product.getId(), product.getStock());
+            try {
+                redisService.setStock(product.getId(), product.getStock());
+                log.info("预热成功：productId={}, stock={}", product.getId(), product.getStock());
+            } catch (Exception e) {
+                log.error("预热失败：productId={}, error={}", product.getId(), e.getMessage());
+            }
         }
+        log.info("商品库存预热完成。");
     }
 }

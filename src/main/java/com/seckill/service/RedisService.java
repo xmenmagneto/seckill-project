@@ -3,15 +3,13 @@ package com.seckill.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class RedisService {
     @Autowired
     private StringRedisTemplate redisTemplate;
-
-    private static final Logger log = LoggerFactory.getLogger(RedisService.class);
 
     public void setStock(Long productId, Integer stock) {
         String key = "seckill:stock:" + productId;
@@ -21,12 +19,17 @@ public class RedisService {
 
     public Integer getStock(Long productId) {
         String key = "seckill:stock:" + productId;
-        String value = redisTemplate.opsForValue().get(key + productId);
-        if (value == null) {
-            log.warn("Redis库存为空：key={}", key);
-            return 0;
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            if (value == null) {
+                log.warn("Redis库存为空：key={}", key);
+                return 0;
+            }
+            log.info("Redis读取库存：key={}, value={}", key, value);
+            return Integer.parseInt(value);
+        } catch (Exception e) {
+            log.error("Redis读取库存失败：key={}, error={}", key, e.getMessage(), e);
+            throw new RuntimeException("读取 Redis 库存失败");
         }
-        log.info("Redis读取库存：key={}, value={}", key, value);
-        return Integer.parseInt(value);
     }
 }
