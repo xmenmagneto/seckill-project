@@ -6,6 +6,7 @@ import com.seckill.repository.ProductRepository;
 import com.seckill.repository.SeckillOrderRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,6 +17,9 @@ public class OrderService {
 
     @Autowired
     ProductRepository  productRepository;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     /**
      * 创建订单（包含库存扣减和订单写库）
@@ -46,5 +50,8 @@ public class OrderService {
         order.setQuantity(1);
         order.setOrderStatus(0); // 0-待支付
         orderRepository.save(order);
+
+        // 5. 写入秒杀结果（前端轮询）
+        redisTemplate.opsForValue().set("seckill:result:" + userId + ":" + productId, "SUCCESS");
     }
 }

@@ -33,4 +33,11 @@ public class SeckillController {
 
         return "Purchase request submitted";
     }
+
+    @GetMapping("/result")
+    public String getSeckillResult(@RequestParam Long userId, @RequestParam Long productId) {
+        String key = "seckill:result:" + userId + ":" + productId;
+        String result = redisTemplate.opsForValue().get(key);
+        return result != null ? result : "PENDING";
+    }
 }
