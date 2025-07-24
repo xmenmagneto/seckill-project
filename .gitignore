@@ -39,3 +39,7 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# 忽略本地开发环境的敏感配置文件，不上传至远程仓库
+# 包含数据库、Redis、Kafka 等连接信息
+src/main/resources/application-dev.yml
