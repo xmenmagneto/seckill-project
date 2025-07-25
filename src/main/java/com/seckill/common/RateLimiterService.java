@@ -16,7 +16,7 @@ public class RateLimiterService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    private static final int LIMIT = 5; // 每秒最大请求数
+    private static final int LIMIT = 2000; // 每秒最大请求数
 
     /**
      * 根据 IP 地址判断是否允许请求（每秒最多 N 次）

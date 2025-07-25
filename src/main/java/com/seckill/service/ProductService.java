@@ -16,7 +16,7 @@ public class ProductService {
 
     public List<Product> getProductList() {
         return List.of(
-                new Product(1L, "iPhone 15", 50, LocalDateTime.now(), LocalDateTime.now()),
+                new Product(1L, "iPhone 15", 500, LocalDateTime.now(), LocalDateTime.now()),
                 new Product(2L, "MacBook Pro", 30, LocalDateTime.now(), LocalDateTime.now()),
                 new Product(3L, "iPad Air", 20, LocalDateTime.now(), LocalDateTime.now())
         );

@@ -16,7 +16,7 @@ public class RedisService {
 
     public void setStock(Long productId, Integer stock) {
         String key = "seckill:stock:" + productId;
-        redisTemplate.opsForValue().set(key  + productId, stock.toString());
+        redisTemplate.opsForValue().set(key, stock.toString());
         log.info("Redis写入库存：key={}, value={}", key, stock);
     }
 
