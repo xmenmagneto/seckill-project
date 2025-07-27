@@ -1,115 +1,128 @@
-# 秒杀系统高并发后台服务
+# High-Concurrency Flash Sale Backend System
 
-## 项目简介
+## 🧩 Project Overview
 
-本项目是一个高并发秒杀系统后台服务的示范实现，主要解决秒杀活动中“高并发库存扣减”、“订单幂等保障”、“异步订单处理”等核心问题。通过 Redis 预热库存和 Lua 脚本实现原子库存扣减，利用 Kafka 实现异步下单消息处理，确保系统在高负载下稳定运行且数据一致。
+This project implements a high-performance flash sale backend system. It solves key issues in flash sale scenarios such as **concurrent inventory deduction**, **idempotent order processing**, and **asynchronous message handling**.
 
----
-
-## 技术栈
-
-- **Spring Boot 3.5.3** - 轻量级应用框架
-- **Redis** - 库存缓存与原子扣减（Lua脚本）
-- **Kafka** - 异步消息队列，实现下单异步处理
-- **MySQL** - 订单持久化存储
-- **Spring Data JPA** - 数据库访问层
-- **Lombok** - 简化Java代码
-- **Swagger** - 接口文档（后续补充）
+It uses:
+- **Redis** for inventory caching and atomic deduction via Lua scripts
+- **Kafka** for asynchronous order processing
+- **MySQL** for persistent order storage
 
 ---
 
-## 模块结构
+## 🛠 Tech Stack
 
-| 模块           | 功能描述                              |
-| -------------- | ----------------------------------- |
-| `SeckillController` | 提供秒杀相关REST接口                |
-| `RedisService`      | Redis操作封装，库存预热及读取       |
-| `KafkaSender`       | Kafka消息发送                       |
-| `OrderService`      | 订单创建、库存扣减及事务管理         |
-| `OrderConsumer`     | Kafka消息消费，处理下单逻辑          |
-| `RateLimiterService`| 接口请求限流                        |
-| `GlobalExceptionHandler` | 全局异常统一处理                  |
+- **Spring Boot 3.5.3** - Lightweight Java framework
+- **Redis** - Inventory preloading and atomic operations
+- **Kafka** - Asynchronous message queue
+- **MySQL** - Order persistence
+- **Spring Data JPA** - ORM for database operations
+- **Lombok** - Reduce boilerplate code
+- **Swagger** - API documentation (optional)
 
 ---
 
-## 关键设计点
+## 🗂 Module Structure
 
-### 库存预热与原子扣减
-
-- 启动时从数据库加载商品库存到 Redis
-- 使用 Redis Lua 脚本实现原子性库存扣减，避免超卖
-
-### 幂等设计
-
-- 订单表设计联合唯一索引（user_id + product_id），防止重复下单
-- Redis实现重复请求标识，快速幂等判断
-- Kafka 异步处理下单，确保消息至少消费一次，消费端幂等
-
-### 异步消息处理
-
-- 秒杀请求先写入 Kafka
-- 消费者异步处理库存扣减和订单创建，减轻接口压力
-
-### 接口限流
-
-- 对秒杀接口使用 Redis 实现令牌桶限流，防止恶意刷单
-
-### 事务管理
-
-- 订单创建与库存扣减通过数据库事务保证一致性
+| Module                  | Description                                 |
+|-------------------------|---------------------------------------------|
+| `SeckillController`     | REST API for flash sale                     |
+| `RedisService`          | Inventory caching and Redis interactions    |
+| `KafkaSender`           | Produces Kafka messages for orders          |
+| `OrderService`          | Inventory deduction, order creation, TX mgmt|
+| `OrderConsumer`         | Consumes Kafka messages and processes orders|
+| `RateLimiterService`    | Redis-based request rate limiting           |
+| `GlobalExceptionHandler`| Global exception handling                   |
 
 ---
 
-## 运行环境与配置
+## 🎯 Key Design Concepts
+
+### ✅ Inventory Preload & Atomic Deduction
+
+- Load inventory from DB to Redis on startup
+- Use Lua script for atomic deduction to avoid overselling
+
+### ✅ Idempotency
+
+- Unique constraint on (user_id, product_id) in DB to prevent duplicate orders
+- Redis stores request markers for fast duplicate-check
+- Kafka ensures at-least-once delivery; consumer logic is idempotent
+
+### ✅ Asynchronous Order Processing
+
+- `/seckill/buy` pushes order request to Kafka
+- Consumer processes order asynchronously (deduction + DB insert)
+- Result stored back in Redis for frontend query
+
+### ✅ Request Rate Limiting
+
+- Redis token-bucket algorithm to limit QPS per IP
+- Avoids malicious flooding
+
+### ✅ Transaction Management
+
+- Inventory deduction + order creation in a single DB transaction
+- Kafka used to decouple write pressure from user-facing interface
+
+---
+
+## ⚙️ Runtime Requirements
 
 - JDK 17
 - Redis 6+
 - Kafka 2.8+
 - MySQL 8+
 
-主要配置文件：`application.yml`（或`application.properties`）  
-包括 Redis、Kafka 连接信息及相关参数
+Config files:
+- `application.yml` (or `application.properties`)  
+  Includes Redis, Kafka, DB configs, and rate limit settings.
 
 ---
 
-## 启动流程
+## 🚀 Startup Process
 
-1. 启动项目，自动加载商品库存到 Redis
-2. 用户调用 `/seckill/buy` 接口发起秒杀请求
-3. 系统限流并判断重复抢购
-4. 请求写入 Kafka 异步队列
-5. 消费者从 Kafka 消费消息，进行库存扣减及订单创建
-6. 订单状态写回 Redis，供前端查询
-
----
-
-## 测试说明
-
-- 使用 JMeter 进行高并发压力测试
-- 测试指标：QPS > 500，失败率 < 5%，无超卖及重复订单
-- 压测脚本模拟多用户并发秒杀场景
+1. Start application → preload inventory from DB to Redis
+2. Clients call `/seckill/buy` to attempt purchase
+3. System checks rate limit + duplicate purchase
+4. Push request to Kafka asynchronously
+5. Kafka consumer deducts inventory + saves order
+6. Result written to Redis for status query
 
 ---
 
-## 异常处理与日志
+## 📊 Stress Test
 
-- 全局统一异常捕获，返回规范错误信息
-- 关键操作日志记录，方便追踪及排查问题
-
----
-
-## 未来改进方向
-
-- JVM性能调优，提升稳定性
-- 优化限流算法，提高抗压能力
-- Kafka消息批量发送与重试机制完善
-- 引入分布式锁或其他分布式事务方案
-- 增加秒杀活动管理后台及监控系统
+- Tool: Apache JMeter
+- Scenario: 500 users concurrently purchasing the same item
+- Result targets:
+    - QPS > 500
+    - Failure rate < 5%
+    - No duplicate orders
+    - No overselling
 
 ---
 
-## 联系方式
+## 🧱 Logging & Exception Handling
 
-项目维护人：Tingchang Deng  
-邮箱：dengtingchang@gmail.com  
-GitHub：https://github.com/xmenmagneto
+- Centralized global exception handler
+- Meaningful business logs (in Chinese) for tracking
+
+---
+
+## 🔮 Future Improvements
+
+- JVM tuning for better GC and throughput
+- Optimize rate limiting algorithm
+- Kafka producer batching and retry policy
+- Optional: Distributed transaction support
+- Build admin dashboard & system monitor
+
+---
+
+## 📬 Contact
+
+Maintainer: Tingchang Deng  
+Email: dengtingchang@gmail.com  
+GitHub: [https://github.com/xmenmagneto](https://github.com/xmenmagneto)
