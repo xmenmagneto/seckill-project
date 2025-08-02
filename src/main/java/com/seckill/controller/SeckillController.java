@@ -34,11 +34,31 @@ public class SeckillController {
     public String buy(@RequestParam Long userId, @RequestParam Long productId, HttpServletRequest request) {
         log.info("接收到秒杀请求：userId={}, productId={}", userId, productId);
 
-        RequestFeatures features = riskControlService.extractFeatures(request, productId);
-        log.info("Features: {}", features);
-        // 暂时不判断，后续接入AI服务
+        // 1. 提取请求特征
+        RequestFeatures features = riskControlService.extractFeatures(request, productId, userId);
+        log.info("提取请求特征: {}", features);
 
-        // 1. 执行 Redis Lua 脚本（原子操作）
+        // 2. 调用 Python 风控服务
+        boolean allowed = riskControlService.checkRisk(features);
+        if (!allowed) {
+            log.warn("风控拦截：IP={}, UA={}, 请求频率={}, userId={}, productId={}, timestamp={}",
+                    features.getIpAddress(),
+                    features.getUserAgent(),
+                    features.getRequestPerMinute(),
+                    userId,
+                    productId,
+                    features.getTimestamp()
+            );
+            return "请求被拦截：疑似异常访问行为";
+        } else {
+            log.info("风控放行：userId={}, IP={}, freq={}",
+                    userId,
+                    features.getIpAddress(),
+                    features.getRequestPerMinute()
+            );
+        }
+
+        // 3. 执行 Redis Lua 脚本（原子操作）
         Long result = redisService.trySeckill(productId, userId);
         log.info("Redis trySeckill 返回结果：{}", result);
 

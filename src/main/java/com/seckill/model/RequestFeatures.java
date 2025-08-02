@@ -12,6 +12,7 @@ public class RequestFeatures {
     private String userAgent;
     private Integer requestPerMinute;
     private String sessionId;
+    private Long userId;
     private Long productId;
     private Long timestamp;
 }
