@@ -2,7 +2,10 @@ package com.seckill.controller;
 
 import com.seckill.kafka.KafkaSender;
 import com.seckill.model.OrderMessage;
+import com.seckill.model.RequestFeatures;
 import com.seckill.service.RedisService;
+import com.seckill.service.RiskControlService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +27,16 @@ public class SeckillController {
     @Autowired
     private RedisService redisService;
 
+    @Autowired
+    private RiskControlService riskControlService;
+
     @PostMapping("/buy")
-    public String buy(@RequestParam Long userId, @RequestParam Long productId) {
+    public String buy(@RequestParam Long userId, @RequestParam Long productId, HttpServletRequest request) {
         log.info("接收到秒杀请求：userId={}, productId={}", userId, productId);
+
+        RequestFeatures features = riskControlService.extractFeatures(request, productId);
+        log.info("Features: {}", features);
+        // 暂时不判断，后续接入AI服务
 
         // 1. 执行 Redis Lua 脚本（原子操作）
         Long result = redisService.trySeckill(productId, userId);
